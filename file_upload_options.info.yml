@@ -1,0 +1,5 @@
+name: 'File Upload Options'
+type: module
+description: 'Upload options for file fields.'
+package: 'Media'
+core: 8.x  

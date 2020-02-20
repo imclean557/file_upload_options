@@ -1,0 +1,5 @@
+file_upload_options.settings:
+  title: 'File Upload Options'
+  route_name: file_upload_options.settings
+  parent: system.admin_config_media
+  description: "Configure File Upload Options"

@@ -1,0 +1,7 @@
+file_upload_options.settings:
+  path: '/admin/config/media/file-upload-options'
+  defaults:
+    _form: '\Drupal\file_upload_options\Form\SettingsForm'
+    _title: 'Configure File Upload Options'
+  requirements:
+    _permission: 'administer file upload options'
