@@ -1,4 +1,4 @@
 services:
   file_upload_options.file_upload_service:
     class: Drupal\file_upload_options\Services\FileUploadService
-    arguments: ['@entity_type.manager', '@entity_field.manager', '@entity_type.bundle.info', '@config.factory', '@state']
+    arguments: ['@entity_type.manager', '@entity_field.manager', '@entity_type.bundle.info', '@config.factory']

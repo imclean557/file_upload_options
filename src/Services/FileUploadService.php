@@ -8,9 +8,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\State\StateInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\file\Entity\File;
 
@@ -39,34 +37,33 @@ class FileUploadService {
    * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface
    */
   protected $entityTypeBundleInfo;
-  
-  /**
-   * State.
-   *
-   * @var \Drupal\Core\State\StateInterface
-   */
-  protected $state;
 
   /**
-   * 
-   * @param EntityTypeManagerInterface $entityTypeManager
-   * @param EntityFieldManagerInterface $entityFieldManager
-   * @param EntityTypeBundleInfoInterface $entityTypeBundleInfo
-   * @param ConfigFactoryInterface $configFactory
+   * The constructor.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entityTypeBundleInfo
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
     EntityFieldManagerInterface $entityFieldManager,
     EntityTypeBundleInfoInterface $entityTypeBundleInfo,
-    ConfigFactoryInterface $configFactory,
-    StateInterface $state) {
+    ConfigFactoryInterface $configFactory
+    ) {
     $this->entityTypeManager = $entityTypeManager;
     $this->entityFieldManager = $entityFieldManager;
     $this->entityTypeBundleInfo = $entityTypeBundleInfo;
     $this->configFactory = $configFactory;
-    $this->state = $state;
   }
 
+  /**
+   * Gets a list of fields supported by this module.
+   *
+   * @return array
+   *   Array of supported fields.
+   */
   public function getSupportedFields() {
     $supportedFields = [];
     $fileFields = $this->entityFieldManager->getFieldMapByFieldType('file');
@@ -88,48 +85,18 @@ class FileUploadService {
   }
 
   /**
-   * Gets file upload replace option.
-   */
-  public function getUploadOption() {    
-    if (!$this->state->get('file_upload_options.replace')) {
-      return FALSE;
-    }    
-
-    return $this->state->get('file_upload_options.replace');
-  }
-
-  /**
-   * Seta file upload replace option.
+   * Get File Upload Settings configuration.
    *
-   * @param integer $option
-   */
-  public function setUploadOption($option) {
-    // Make sure it's not currently in use.
-    //while ($this->getUploadOption()) {
-      // Wait and do nothing.
-    //}
-    // Now set the value.
-    $this->state->set('file_upload_options.replace', $option);
-  }
-  
-  /**
-   * Clears file upload replace option.
-   */
-  public function resetUploadOption() {
-    $this->state->set('file_upload_options.replace', NULL);
-  }
-  
-  /**
    * @return config
-   *  File Upload Options settings.
+   *   File Upload Options settings.
    */
   public function getConfig() {
     return $this->configFactory->get('file_upload_options.settings');
   }
-  
+
   /**
    * Overrides Drupal\file\Plugin\Field\FieldWidget\FileWidget::value().
-   * 
+   *
    * Form API callback. Retrieves the value for the file_generic field element.
    *
    * This method is assigned as a #value_callback in formElement() method.
@@ -155,7 +122,7 @@ class FileUploadService {
 
     return $return;
   }
-  
+
   /**
    * Overrides Drupal\file\Element\ManagedFile::valueCallback().
    */
@@ -254,5 +221,5 @@ class FileUploadService {
     $return['fids'] = $fids;
     return $return;
   }
-}
 
+}

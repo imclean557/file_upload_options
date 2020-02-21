@@ -11,10 +11,6 @@ use Drupal\Core\Render\Element;
 
 /**
  * Implements hook_form_alter().
- *
- * @param type $form
- * @param FormStateInterface $form_state
- * @param type $form_id
  */
 function file_upload_options_form_alter(&$form, FormStateInterface $form_state, $form_id) {
 
@@ -27,7 +23,7 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
     $entityBundle = $entity->getEntityTypeId() . '.' . $entity->bundle() . '.';
 
     // Use the File Upload Service.
-    $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');   
+    $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
     $supportedFields = $fileUploadService->getSupportedFields();
 
     // Check each entity for file fields and process.
@@ -40,7 +36,7 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
 
           // Change the valueCallback.
           foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
-            $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService','value'];
+            $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];
           }
         }
       }
@@ -63,7 +59,7 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
  *   ID. Each array element contains a file entity. Function returns FALSE if
  *   upload directory could not be created or no files were uploaded.
  */
-function file_upload_options_file_managed_file_save_upload($element, FormStateInterface $form_state) {
+function file_upload_options_file_managed_file_save_upload(array $element, FormStateInterface $form_state) {
   $fileId = $element['#entity_type'] . '.' . $form_state->getFormObject()->getEntity()->bundle() . '.' . $element['#field_name'];
   $upload_name = implode('_', $element['#parents']);
   $all_files = \Drupal::request()->files->get('files', []);
@@ -85,8 +81,8 @@ function file_upload_options_file_managed_file_save_upload($element, FormStateIn
   if ($files_uploaded) {
     // Get replace option.
     $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
-    $replaceOption = $fileUploadService->getConfig()->get('upload_option.' . $fileId);;    
-    
+    $replaceOption = $fileUploadService->getConfig()->get('upload_option.' . $fileId);;
+
     if (!$files = _file_save_upload_from_form($element, $form_state, NULL, $replaceOption)) {
       \Drupal::logger('file')->notice('The file upload failed. %upload', ['%upload' => $upload_name]);
       return [];
@@ -106,12 +102,19 @@ function file_upload_options_file_managed_file_save_upload($element, FormStateIn
 
 /**
  * Implements hook_options_element_info_alter().
- *
- * @param array $info
  */
 function file_upload_options_element_info_alter(array &$info) {
   if (array_key_exists('managed_file', $info)) {
     // Add custom value_callback.
-    $info['managed_file']['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService','valueCallback'];
+    $info['managed_file']['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'valueCallback'];
+  }
+}
+
+/**
+ * Implements hook_rest_resource_alter().
+ */
+function file_upload_options_rest_resource_alter(&$definitions) {
+  if (isset($definitions['file:upload'])) {
+    $definitions['file:upload']['class'] = 'Drupal\file_upload_options\Plugin\rest\resource\FileUploadOptionsResource';
   }
 }
