@@ -30,10 +30,6 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
     foreach ($entityData as $fieldName => $value) {
       foreach ($supportedFields as $fieldData) {
         if (array_key_exists($entityBundle . $fieldName, $fieldData)) {
-          // Get the upload option for the field and set it to state.
-          $option = $fileUploadService->getConfig()->get('upload_option.' . $entityBundle . $fieldName);
-          $fileUploadService->setUploadOption($option);
-
           // Change the valueCallback.
           foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
             $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];

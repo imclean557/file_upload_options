@@ -125,8 +125,8 @@ class SettingsForm extends ConfigFormBase {
             '#options' => [
               -1 => $this->t('Current behaviour'),
               $this->fileSystem::EXISTS_RENAME => $this->t('Rename the new file'),
-              $this->fileSystem::EXISTS_REPLACE => $this->t('Replace the existing file.'),
-              $this->fileSystem::EXISTS_ERROR => $this->t('Prevent the file from being uploaded.'),
+              $this->fileSystem::EXISTS_REPLACE => $this->t('Replace the existing file'),
+              $this->fileSystem::EXISTS_ERROR => $this->t('Prevent the file from being uploaded'),
             ],
           ];
         }
