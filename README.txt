@@ -12,3 +12,4 @@ Only file fields are supported at this stage.
 To use, install and go to Admin -> Config -> Media -> File Upload Options to
 configure.
 
+For more information, see: https://www.drupal.org/project/file_upload_options

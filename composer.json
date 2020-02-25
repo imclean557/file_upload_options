@@ -1,0 +1,17 @@
+{
+  "name": "drupal/file_upload_options",
+  "type": "drupal-module",
+  "description": "Specify what should happen when uploaded files have the same name as existing files.",
+  "homepage": "https://www.drupal.org/project/file_upload_options",
+  "license": "GPL-2.0+",
+  "authors": [
+    {
+      "name": "Ian McLean (imclean)",
+      "homepage": "http://drupal.org/u/imclean"
+    }
+  ],
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/file_upload_options",
+    "source": "https://git.drupalcode.org/project/file_upload_options"
+  }
+}
