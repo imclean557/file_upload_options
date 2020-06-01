@@ -74,6 +74,10 @@ class FileUploadService {
       foreach ($fields as $fieldName => $field) {
         foreach ($field['bundles'] as $bundle) {
           $fieldDefinitions = $this->entityFieldManager->getFieldDefinitions($entityType, $bundle);
+          // Check for ID.
+          if (!method_exists($fieldDefinitions[$fieldName], 'id')) {
+            break;
+          }
           $supportedFields[$entityName][$fieldDefinitions[$fieldName]->id()] = [
             'bundle' => $bundles[$bundle]['label'],
             'field_name' => $fieldDefinitions[$fieldName]->label(),

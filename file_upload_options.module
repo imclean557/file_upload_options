@@ -14,6 +14,10 @@ use Drupal\Core\Render\Element;
  */
 function file_upload_options_form_alter(&$form, FormStateInterface $form_state, $form_id) {
 
+  // Use the File Upload Service.
+  $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
+  $supportedFields = $fileUploadService->getSupportedFields();
+
   // Check there's an entity to get.
   if (method_exists($form_state->getFormObject(), 'getEntity')) {
 
@@ -21,10 +25,6 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
     $entity = $form_state->getFormObject()->getEntity();
     $entityData = $entity->toArray();
     $entityBundle = $entity->getEntityTypeId() . '.' . $entity->bundle() . '.';
-
-    // Use the File Upload Service.
-    $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
-    $supportedFields = $fileUploadService->getSupportedFields();
 
     // Check each entity for file fields and process.
     foreach ($entityData as $fieldName => $value) {
@@ -39,7 +39,43 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
     }
 
   }
+  else {
+    $config = \Drupal::service('config.factory')->getEditable('file_upload_options.settings');
+    $customFields = $config->get('custom_fields');
 
+    $fields = file_upload_options_get_file_fields($form);
+    if ($fields) {
+      foreach ($fields as $fieldName) {
+        if (!array_key_exists($fieldName, $customFields)) {
+          // Set a default value.
+          $config->set('custom_fields.' . $fieldName, 0);
+          $config->save();
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Gets nested fields.
+ *
+ * @param array $container
+ *   Form array or other field container.
+ */
+function file_upload_options_get_file_fields(array $container) {
+  $fieldNames = [];
+  foreach (Element::children($container) as $fieldName) {
+    $field = $container[$fieldName];
+    if (!array_key_exists('#type', $field) || $field['#type'] == 'details' || $field['#type'] == 'fieldset') {
+      $fields = file_upload_options_get_file_fields($field);
+    }
+    else {
+      if ($field['#type'] === 'managed_file' || $field['#type'] === 'image') {
+        $fieldNames[] = $fieldName;
+      }
+    }
+  }
+  return $fieldNames;
 }
 
 /**
@@ -56,7 +92,14 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
  *   upload directory could not be created or no files were uploaded.
  */
 function file_upload_options_file_managed_file_save_upload(array $element, FormStateInterface $form_state) {
-  $fileId = $element['#entity_type'] . '.' . $form_state->getFormObject()->getEntity()->bundle() . '.' . $element['#field_name'];
+  if (method_exists($form_state->getFormObject(), 'getEntity')) {
+    $fileId = $element['#entity_type'] . '.' . $form_state->getFormObject()->getEntity()->bundle() . '.' . $element['#field_name'];
+    $isCustomField = FALSE;
+  }
+  else {
+    $fileId = $element['#name'];
+    $isCustomField = TRUE;
+  }
   $upload_name = implode('_', $element['#parents']);
   $all_files = \Drupal::request()->files->get('files', []);
   if (empty($all_files[$upload_name])) {
@@ -77,7 +120,12 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
   if ($files_uploaded) {
     // Get replace option.
     $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
-    $replaceOption = $fileUploadService->getConfig()->get('upload_option.' . $fileId);;
+    if ($isCustomField) {
+      $replaceOption = $fileUploadService->getConfig()->get('custom_fields')[$fileId];
+    }
+    else {
+      $replaceOption = $fileUploadService->getConfig()->get('upload_option.' . $fileId);
+    }
 
     if (!$files = _file_save_upload_from_form($element, $form_state, NULL, $replaceOption)) {
       \Drupal::logger('file')->notice('The file upload failed. %upload', ['%upload' => $upload_name]);

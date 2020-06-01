@@ -133,6 +133,38 @@ class SettingsForm extends ConfigFormBase {
       }
     }
 
+    $form['custom_fields'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Custom fields'),
+      '#open' => TRUE,
+    ];
+
+    if ($config->get('custom_fields')) {
+      foreach ($config->get('custom_fields') as $fieldName => $uploadOption) {
+        $form['custom_fields']['custom_field__' . $fieldName] = [
+          '#type' => 'select',
+          '#title' => $fieldName,
+          '#description' => $this->t('Select the method of handling where there is a file already with the same name as the file being uploaded.<br><em>Note that the Replace option will replace a file with the same name even if that file is being used/referenced by another file field. Use at your own risk.</em>'),
+          '#default_value' => $uploadOption,
+          '#options' => [
+            -1 => $this->t('Current behaviour'),
+            $this->fileSystem::EXISTS_RENAME => $this->t('Rename the new file'),
+            $this->fileSystem::EXISTS_REPLACE => $this->t('Replace the existing file'),
+            $this->fileSystem::EXISTS_ERROR => $this->t('Prevent the file from being uploaded'),
+            99 => $this->t('Remove this setting'),
+          ],
+        ];
+      }
+    }
+
+    $form['custom_fields']['add_custom_field'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Add custom field'),
+      '#description' => $this->t('Enter the machine name of a custom file field.'),
+      '#default_value' => '',
+      '#maxlength' => 128,
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -140,17 +172,35 @@ class SettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    // Check for supported fields first.
+    $config = $this->config('file_upload_options.settings');
+    $values = $form_state->getValues();
+
+    // Check for supported fields.
     if ($this->supportedFields) {
-      $config = $this->config('file_upload_options.settings');
-      $values = $form_state->getValues();
       foreach ($this->supportedFields as $entityType => $fields) {
         foreach ($fields as $fieldId => $fieldInfo) {
           $config->set('upload_option.' . $fieldId, $values['upload_option__' . str_replace('.', '_', $fieldId)]);
         }
       }
-      $config->save();
     }
+
+    // Check for custom fields.
+    if ($config->get('custom_fields')) {
+      foreach ($config->get('custom_fields') as $fieldName => $uploadOption) {
+        if ((int) $values['custom_field__' . $fieldName] == 99) {
+          $config->clear('custom_fields.' . $fieldName);
+        }
+        else {
+          $config->set('custom_fields.' . $fieldName, $values['custom_field__' . $fieldName]);
+        }
+      }
+    }
+
+    if (!empty($values['add_custom_field'])) {
+      $config->set('custom_fields.' . $values['add_custom_field'], $this->fileSystem::EXISTS_RENAME);
+    }
+
+    $config->save();
 
     parent::submitForm($form, $form_state);
   }
