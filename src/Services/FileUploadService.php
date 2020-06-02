@@ -77,12 +77,26 @@ class FileUploadService {
           $fieldDefinitions = $this->entityFieldManager->getFieldDefinitions($entityType, $bundle);
           // Check for ID.
           if (!method_exists($fieldDefinitions[$fieldName], 'id')) {
-            break;
+            $storageId = $fieldDefinitions[$fieldName]->getTargetEntityTypeId() . '.';
+            $storageId .= $bundle . '.';
+            $storageId .= $fieldDefinitions[$fieldName]->getName();
+            if (method_exists($fieldDefinitions[$fieldName], 'label')) {
+              $label = $fieldDefinitions[$fieldName]->label();
+            }
+            else {
+              $label = $fieldDefinitions[$fieldName]->getLabel();
+            }
+            $supportedFields[$entityName][(string) $storageId] = [
+              'bundle' => $bundles[$bundle]['label'],
+              'field_name' => $label,
+            ];
           }
-          $supportedFields[$entityName][$fieldDefinitions[$fieldName]->id()] = [
-            'bundle' => $bundles[$bundle]['label'],
-            'field_name' => $fieldDefinitions[$fieldName]->label(),
-          ];
+          else {
+            $supportedFields[$entityName][$fieldDefinitions[$fieldName]->id()] = [
+              'bundle' => $bundles[$bundle]['label'],
+              'field_name' => $fieldDefinitions[$fieldName]->label(),
+            ];
+          }
         }
       }
     }

@@ -30,9 +30,13 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
     foreach ($entityData as $fieldName => $value) {
       foreach ($supportedFields as $fieldData) {
         if (array_key_exists($entityBundle . $fieldName, $fieldData)) {
-          // Change the valueCallback.
-          foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
-            $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];
+
+          // Form field name isn't always the same as the entity filed name.
+          if (isset($form[$fieldName])) {
+            // Change the valueCallback.
+            foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
+              $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];
+            }
           }
         }
       }
@@ -40,17 +44,27 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
 
   }
   else {
-    $config = \Drupal::service('config.factory')->getEditable('file_upload_options.settings');
-    $customFields = $config->get('custom_fields');
+    file_upload_options_process_custom_fields($form);
+  }
+}
 
-    $fields = file_upload_options_get_file_fields($form);
-    if ($fields) {
-      foreach ($fields as $fieldName) {
-        if (!array_key_exists($fieldName, $customFields)) {
-          // Set a default value.
-          $config->set('custom_fields.' . $fieldName, 0);
-          $config->save();
-        }
+/**
+ * Look for custom fields not managed by an entity.
+ *
+ * @param array $form
+ *   The form array.
+ */
+function file_upload_options_process_custom_fields(array &$form) {
+  $config = \Drupal::service('config.factory')->getEditable('file_upload_options.settings');
+  $customFields = $config->get('custom_fields');
+
+  $fields = file_upload_options_get_file_fields($form);
+  if ($fields) {
+    foreach ($fields as $fieldName => &$field) {
+      if (!array_key_exists($fieldName, $customFields)) {
+        // Set a default value.
+        $config->set('custom_fields.' . $fieldName, 0);
+        $config->save();
       }
     }
   }
@@ -62,20 +76,20 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
  * @param array $container
  *   Form array or other field container.
  */
-function file_upload_options_get_file_fields(array $container) {
-  $fieldNames = [];
+function file_upload_options_get_file_fields(array &$container) {
+  $fields = [];
   foreach (Element::children($container) as $fieldName) {
-    $field = $container[$fieldName];
+    $field = &$container[$fieldName];
     if (!array_key_exists('#type', $field) || $field['#type'] == 'details' || $field['#type'] == 'fieldset') {
-      $fields = file_upload_options_get_file_fields($field);
+      $fields += file_upload_options_get_file_fields($field);
     }
     else {
       if ($field['#type'] === 'managed_file' || $field['#type'] === 'image') {
-        $fieldNames[] = $fieldName;
+        $fields[$fieldName] = &$field;
       }
     }
   }
-  return $fieldNames;
+  return $fields;
 }
 
 /**
@@ -92,11 +106,14 @@ function file_upload_options_get_file_fields(array $container) {
  *   upload directory could not be created or no files were uploaded.
  */
 function file_upload_options_file_managed_file_save_upload(array $element, FormStateInterface $form_state) {
-  if (method_exists($form_state->getFormObject(), 'getEntity')) {
+  // Check there is an entity and that it actually contains the element.
+  if (method_exists($form_state->getFormObject(), 'getEntity') && array_key_exists('#entity_type', $element)) {
     $fileId = $element['#entity_type'] . '.' . $form_state->getFormObject()->getEntity()->bundle() . '.' . $element['#field_name'];
     $isCustomField = FALSE;
   }
   else {
+    // Otherwise it's a custom field without an entity or the field name doesn't
+    // match any of the entity's fields.
     $fileId = $element['#name'];
     $isCustomField = TRUE;
   }
