@@ -2,4 +2,4 @@ name: 'File Upload Options'
 type: module
 description: 'Upload options for file fields.'
 package: 'Media'
-core: 8.x  
+core_version_requirement: ^8 || ^9
