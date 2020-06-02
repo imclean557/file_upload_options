@@ -67,6 +67,7 @@ class FileUploadService {
   public function getSupportedFields() {
     $supportedFields = [];
     $fileFields = $this->entityFieldManager->getFieldMapByFieldType('file');
+    $fileFields += $this->entityFieldManager->getFieldMapByFieldType('image');
     foreach ($fileFields as $entityType => $fields) {
       $bundles = $this->entityTypeBundleInfo->getBundleInfo($entityType);
       $entityDefinitions = $this->entityTypeManager->getDefinition($entityType);
