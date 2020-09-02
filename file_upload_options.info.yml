@@ -3,3 +3,4 @@ type: module
 description: 'Upload options for file fields.'
 package: 'Media'
 core_version_requirement: ^8 || ^9
+configure: file_upload_options.settings
