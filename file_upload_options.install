@@ -1,0 +1,8 @@
+<?php
+
+/**
+ * Set weight to run before other modules such as filefield_paths.
+ */
+function file_upload_options_update_8001() {   
+  module_set_weight('file_upload_options', -10);
+}

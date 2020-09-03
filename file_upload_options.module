@@ -5,8 +5,10 @@
  * Contains file_upload_options.module.
  */
 
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\file\Plugin\Field\FieldType\FileFieldItemList;
 use Drupal\Core\Render\Element;
 
 /**
@@ -20,32 +22,60 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
 
   // Check there's an entity to get.
   if (method_exists($form_state->getFormObject(), 'getEntity')) {
-
     // Get entity details.
     $entity = $form_state->getFormObject()->getEntity();
-    $entityData = $entity->toArray();
     $entityBundle = $entity->getEntityTypeId() . '.' . $entity->bundle() . '.';
-
-    // Check each entity for file fields and process.
-    foreach ($entityData as $fieldName => $value) {
-      foreach ($supportedFields as $fieldData) {
-        if (array_key_exists($entityBundle . $fieldName, $fieldData)) {
-
-          // Form field name isn't always the same as the entity filed name.
-          if (isset($form[$fieldName])) {
-            // Change the valueCallback.
-            foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
-              $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];
-            }
-          }
-        }
-      }
-    }
-
+    file_upload_options_add_callbacks($form, $supportedFields, $entityBundle);
   }
   else {
     file_upload_options_process_custom_fields($form);
   }
+
+}
+
+/**
+ * 
+ * @param array $form
+ *   The form arraay.
+ * 
+ * @param array $supportedFields
+ *   Array of supported file fields.
+ *
+ * @param type $entityData
+ *   Entity fields and properties.
+ * 
+ * @param type $entityBundle
+ *   The entity bundle.
+ */
+function file_upload_options_add_callbacks(&$form, $supportedFields, $entityBundle) {
+  foreach (Element::children($form) as $fieldName) {
+    $field = &$form[$fieldName];
+    if (!empty(Element::children($field)) && (!array_key_exists('#type', $field) || file_upload_options_is_container($field))) {
+      file_upload_options_add_callbacks($field, $supportedFields, $entityBundle);
+    }
+    else {
+      foreach ($supportedFields as $fieldData) {
+        // Check if the field is supported.         
+        if (array_key_exists($entityBundle . $fieldName, $fieldData)) {
+          // Change the valueCallback.
+          foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
+            $form[$fieldName]['widget'][$delta]['#value_callback'] = ['Drupal\file_upload_options\Services\FileUploadService', 'value'];
+          }
+        }
+      }
+    }
+  }
+}
+
+function file_upload_options_is_container($element) {
+  $containers = [
+    'details',
+    'fieldset',
+    'field_group',
+    'vertial_tabs',
+    '_layout_builder'
+  ];  
+  return in_array($element['#type'], $containers);  
 }
 
 /**
@@ -178,4 +208,13 @@ function file_upload_options_rest_resource_alter(&$definitions) {
   if (isset($definitions['file:upload'])) {
     $definitions['file:upload']['class'] = 'Drupal\file_upload_options\Plugin\rest\resource\FileUploadOptionsResource';
   }
+}
+
+/**
+ * Implements hook_filefield_paths_process_file().
+ */
+function file_upload_options_filefield_paths_process_file(ContentEntityInterface $entity, FileFieldItemList $field, array &$settings = []) {
+  $fileId = $entity->getEntityType()->id() . '.' . $entity->bundle() . '.' . $field->getName();
+  $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
+  $settings['replace'] = $fileUploadService->getConfig()->get('upload_option.' . $fileId) ?? FileSystemInterface::EXISTS_RENAME;
 }
