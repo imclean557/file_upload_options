@@ -147,7 +147,7 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
     $isCustomField = FALSE;
   }
   // Check there is an entity and that it actually contains the element.
-  if (method_exists($form_state->getFormObject(), 'getEntity') && array_key_exists('#entity_type', $element)) {
+  elseif (method_exists($form_state->getFormObject(), 'getEntity') && array_key_exists('#entity_type', $element)) {
     $fileId = $element['#entity_type'] . '.' . $form_state->getFormObject()->getEntity()->bundle() . '.' . $element['#field_name'];
     $isCustomField = FALSE;
   }
