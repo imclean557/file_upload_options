@@ -62,10 +62,15 @@ class SettingsForm extends ConfigFormBase {
    * The constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
    * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager
+   *   The entity field manager.
    * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entityTypeBundleInfo
+   *   The entity type bundle info.
    * @param \Drupal\Core\File\FileSystemInterface $fileSystem
+   *   The file system service.
    * @param \Drupal\file_upload_options\Services\FileUploadService $fileUploadService
+   *   The file upload service.
    */
   public function __construct(EntityTypeManagerInterface $entityTypeManager, EntityFieldManagerInterface $entityFieldManager, EntityTypeBundleInfoInterface $entityTypeBundleInfo, FileSystemInterface $fileSystem, FileUploadService $fileUploadService) {
     $this->entityTypeManager = $entityTypeManager;
@@ -177,7 +182,7 @@ class SettingsForm extends ConfigFormBase {
 
     // Check for supported fields.
     if ($this->supportedFields) {
-      foreach ($this->supportedFields as $entityType => $fields) {
+      foreach ($this->supportedFields as $fields) {
         foreach ($fields as $fieldId => $fieldInfo) {
           $config->set('upload_option.' . $fieldId, $values['upload_option__' . str_replace('.', '_', $fieldId)]);
         }

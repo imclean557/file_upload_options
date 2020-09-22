@@ -34,16 +34,16 @@ function file_upload_options_form_alter(&$form, FormStateInterface $form_state, 
 }
 
 /**
- * 
+ *
  * @param array $form
  *   The form arraay.
- * 
+ *
  * @param array $supportedFields
  *   Array of supported file fields.
  *
  * @param type $entityData
  *   Entity fields and properties.
- * 
+ *
  * @param type $entityBundle
  *   The entity bundle.
  */
@@ -55,7 +55,7 @@ function file_upload_options_add_callbacks(&$form, $supportedFields, $entityBund
     }
     else {
       foreach ($supportedFields as $fieldData) {
-        // Check if the field is supported.         
+        // Check if the field is supported.
         if (array_key_exists($entityBundle . $fieldName, $fieldData)) {
           // Change the valueCallback.
           foreach (Element::children($form[$fieldName]['widget']) as $delta => $widget) {
@@ -74,8 +74,8 @@ function file_upload_options_is_container($element) {
     'field_group',
     'vertial_tabs',
     '_layout_builder'
-  ];  
-  return in_array($element['#type'], $containers);  
+  ];
+  return in_array($element['#type'], $containers);
 }
 
 /**
@@ -136,14 +136,14 @@ function file_upload_options_get_file_fields(array &$container) {
  *   upload directory could not be created or no files were uploaded.
  */
 function file_upload_options_file_managed_file_save_upload(array $element, FormStateInterface $form_state) {
-  
+
   // Check if it's an inline entity form.
   if ($form_state->get('inline_entity_form')) {
     // It's a convoluted path just to get the bundle of the referenced entity.
     $fieldParent = $element['#field_parents'][0];
     $iefId = $form_state->getCompleteForm()[$fieldParent]['widget']['#ief_id'];
-    $bundle = $form_state->get('inline_entity_form')[$iefId]['entities'][0]['entity']->bundle();    
-    $fileId = $element['#entity_type'] . '.' . $bundle . '.' . $element['#field_name'];  
+    $bundle = $form_state->get('inline_entity_form')[$iefId]['entities'][0]['entity']->bundle();
+    $fileId = $element['#entity_type'] . '.' . $bundle . '.' . $element['#field_name'];
     $isCustomField = FALSE;
   }
   // Check there is an entity and that it actually contains the element.
@@ -235,8 +235,8 @@ function file_upload_options_filefield_paths_process_file(ContentEntityInterface
 function file_upload_options_inline_entity_form_entity_form_alter(&$entity_form, FormStateInterface $form_state) {
   // Use the File Upload Service.
   $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
-  $supportedFields = $fileUploadService->getSupportedFields();  
-  $entityBundle = $entity_form['#entity_type'] . '.' . $entity_form['#bundle'] . '.';  
+  $supportedFields = $fileUploadService->getSupportedFields();
+  $entityBundle = $entity_form['#entity_type'] . '.' . $entity_form['#bundle'] . '.';
 
   // Add the callbacks.
   file_upload_options_add_callbacks($entity_form, $supportedFields, $entityBundle);
