@@ -142,6 +142,15 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
     // It's a convoluted path just to get the bundle of the referenced entity.
     $fieldParent = $element['#field_parents'][0];
     $iefId = $form_state->getCompleteForm()[$fieldParent]['widget']['#ief_id'];
+    // Check for existing entity.
+    if (isset($form_state->get('inline_entity_form')[$iefId]['entities'][0])) {
+      $bundle = $form_state->get('inline_entity_form')[$iefId]['entities'][0]['entity']->bundle();
+    }
+    else {
+      // Get first target bundle from field config.
+      $fieldConfig = reset($form_state->get('inline_entity_form')[$iefId]);
+      $bundle = reset($fieldConfig->getSetting('handler_settings')['target_bundles']);
+    }
     $bundle = $form_state->get('inline_entity_form')[$iefId]['entities'][0]['entity']->bundle();
     $fileId = $element['#entity_type'] . '.' . $bundle . '.' . $element['#field_name'];
     $isCustomField = FALSE;
