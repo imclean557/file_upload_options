@@ -138,7 +138,8 @@ function file_upload_options_get_file_fields(array &$container) {
 function file_upload_options_file_managed_file_save_upload(array $element, FormStateInterface $form_state) {
 
   // Check if it's an inline entity form.
-  if ($form_state->get('inline_entity_form')) {
+  if ($form_state->get('inline_entity_form')
+    && in_array('inline_entity_form', $element['#field_parents'])) {
     // It's a convoluted path just to get the bundle of the referenced entity.
     $fieldParent = $element['#field_parents'][0];
     $iefId = $form_state->getCompleteForm()[$fieldParent]['widget']['#ief_id'];
