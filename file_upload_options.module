@@ -192,11 +192,17 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
   if ($files_uploaded) {
     // Get replace option.
     $fileUploadService = \Drupal::service('file_upload_options.file_upload_service');
+    /** @var \Drupal\Core\Config\ImmutableConfig $config */
+    $config = $fileUploadService->getConfig();
+    $replaceOption = FileSystemInterface::EXISTS_RENAME;
     if ($isCustomField) {
-      $replaceOption = $fileUploadService->getConfig()->get('custom_fields')[$fileId];
+      $customFields = $config->get('custom_fields');
+      if (!empty($customFields[$fileId])) {
+        $replaceOption = $customFields[$fileId];
+      }
     }
     else {
-      $replaceOption = $fileUploadService->getConfig()->get('upload_option.' . $fileId);
+      $replaceOption = $config->get('upload_option.' . $fileId);
     }
 
     if (!$files = _file_save_upload_from_form($element, $form_state, NULL, $replaceOption)) {
