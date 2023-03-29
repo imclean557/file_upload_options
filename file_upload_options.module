@@ -139,11 +139,18 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
 
   // Check if it's an inline entity form.
   if ($form_state->get('inline_entity_form')
-    && in_array('inline_entity_form', $element['#field_parents'])) {
+    && (in_array('inline_entity_form', $element['#field_parents'])
+      || in_array('inline_entity_form', $element['#array_parents']))
+    ) {
     // It's a convoluted path just to get the bundle of the referenced entity.
-    $fieldParent = $element['#field_parents'][0];
+    if (in_array('inline_entity_form', $element['#array_parents'])) {
+      $fieldParent = $element['#array_parents'][0];
+    }
+    else {
+      $fieldParent = $element['#field_parents'][0];
+    }
     // Check if the ief_id is stored in the parent.
-    $iefId = isset($form_state->getCompleteForm()[$fieldParent]['widget']['#ief_id']) ?? NULL;
+    $iefId = $form_state->getCompleteForm()[$fieldParent]['widget']['#ief_id'] ?? NULL;
     // If it isn't, grab the first target bundle from the field config.
     if (!$iefId) {
       $fieldConfig = $form_state->getFormObject()->getEntity()->getFieldDefinition($fieldParent);
@@ -154,9 +161,15 @@ function file_upload_options_file_managed_file_save_upload(array $element, FormS
       $bundle = $form_state->get('inline_entity_form')[$iefId]['entities'][0]['entity']->bundle();
     }
     else {
-      // Get first target bundle from field config.
-      $fieldConfig = reset($form_state->get('inline_entity_form')[$iefId]);
-      $bundle = reset($fieldConfig->getSetting('handler_settings')['target_bundles']);
+      // Check for bundle in form settings.
+      if (isset($form_state->get('inline_entity_form')[$iefId]['form settings']) && isset($form_state->get('inline_entity_form')[$iefId]['form settings']['bundle'])) {
+        $bundle = $form_state->get('inline_entity_form')[$iefId]['form settings']['bundle'];
+      }
+      else {
+        // Get first target bundle from field config.
+        $fieldConfig = reset($form_state->get('inline_entity_form')[$iefId]);
+        $bundle = reset($fieldConfig->getSetting('handler_settings')['target_bundles']);
+      }
     }
     $fileId = $element['#entity_type'] . '.' . $bundle . '.' . $element['#field_name'];
     $isCustomField = FALSE;

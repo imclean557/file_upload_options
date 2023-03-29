@@ -7,7 +7,7 @@ are are grouped by entity type.
 
 Also supports file uploads via REST which use FileUploadResource.
 
-Only file fields are supported at this stage.
+File and image fields are supported.
 
 To use, install and go to Admin -> Config -> Media -> File Upload Options to
 configure.
