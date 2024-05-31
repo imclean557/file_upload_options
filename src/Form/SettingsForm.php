@@ -49,7 +49,7 @@ class SettingsForm extends ConfigFormBase {
    *
    * @var \Drupal\file_upload_options\Services\FileUploadService
    */
-  protected $fileUploadServce;
+  protected $fileUploadService;
 
   /**
    * Supported fields.

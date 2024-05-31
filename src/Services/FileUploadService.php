@@ -38,6 +38,13 @@ class FileUploadService {
    */
   protected $entityTypeBundleInfo;
 
+   /**
+     * Config Factory.
+     *
+     * @var \Drupal\Core\Config\ConfigFactoryInterface
+     */
+    protected $configFactory;
+
   /**
    * The constructor.
    *
