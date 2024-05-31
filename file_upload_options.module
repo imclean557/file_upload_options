@@ -87,6 +87,9 @@ function file_upload_options_is_container($element) {
 function file_upload_options_process_custom_fields(array &$form) {
   $config = \Drupal::service('config.factory')->getEditable('file_upload_options.settings');
   $customFields = $config->get('custom_fields');
+  if (is_null($customFields)) {
+    $customFields = [];
+  }
 
   $fields = file_upload_options_get_file_fields($form);
   if ($fields) {
