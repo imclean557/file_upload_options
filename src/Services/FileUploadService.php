@@ -8,66 +8,29 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileExists;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\file\Entity\File;
+use Drupal\file_upload_options\UploadOption;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * File Upload Service.
  */
 class FileUploadService {
 
-  /**
-   * Field definition.
-   *
-   * @var \Drupal\Core\Entity\EntityFieldManagerInterface
-   */
-  protected $entityFieldManager;
-
-  /**
-   * Entity Type Manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected $entityTypeManager;
-
-  /**
-   * Entity type bundle info.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface
-   */
-  protected $entityTypeBundleInfo;
-
-   /**
-     * Config Factory.
-     *
-     * @var \Drupal\Core\Config\ConfigFactoryInterface
-     */
-    protected $configFactory;
-
-  /**
-   * The constructor.
-   *
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
-   *   The entity type manager.
-   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager
-   *   The entity field manager.
-   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entityTypeBundleInfo
-   *   The entity type bundle info.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The configuration factory service.
-   */
   public function __construct(
-    EntityTypeManagerInterface $entityTypeManager,
-    EntityFieldManagerInterface $entityFieldManager,
-    EntityTypeBundleInfoInterface $entityTypeBundleInfo,
-    ConfigFactoryInterface $configFactory
-    ) {
-    $this->entityTypeManager = $entityTypeManager;
-    $this->entityFieldManager = $entityFieldManager;
-    $this->entityTypeBundleInfo = $entityTypeBundleInfo;
-    $this->configFactory = $configFactory;
-  }
+    protected EntityTypeManagerInterface $entityTypeManager,
+    protected EntityFieldManagerInterface $entityFieldManager,
+    protected EntityTypeBundleInfoInterface $entityTypeBundleInfo,
+    protected ConfigFactoryInterface $configFactory,
+    protected FileSystemInterface $fileSystem,
+    protected RequestStack $requestStack,
+    protected LoggerInterface $logger,
+  ) {}
 
   /**
    * Gets a list of fields supported by this module.
@@ -125,6 +88,123 @@ class FileUploadService {
   }
 
   /**
+   * Gets the configured file exists behaviour.
+   *
+   * @param string $file_id
+   *   The entity_type.bundle.field_name identifier, or the element name for
+   *   custom fields.
+   * @param bool $is_custom_field
+   *   Whether the element is a custom (non-entity) field.
+   *
+   * @return \Drupal\Core\File\FileExists
+   *   The file exists behaviour. Defaults to rename.
+   */
+  public function getFileExists(string $file_id, bool $is_custom_field = FALSE): FileExists {
+    $key = ($is_custom_field ? 'custom_fields.' : 'upload_option.') . $file_id;
+    return UploadOption::fromConfig($this->getConfig()->get($key))->toFileExists();
+  }
+
+  /**
+   * Saves files uploaded into a managed_file element.
+   *
+   * Equivalent to file_managed_file_save_upload(), using the configured file
+   * exists behaviour.
+   *
+   * @param array $element
+   *   The FAPI element whose values are being saved.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   *
+   * @return \Drupal\file\FileInterface[]|false
+   *   File entities keyed by file ID, or FALSE if the upload directory could
+   *   not be created or no files were uploaded.
+   */
+  public function saveUpload(array $element, FormStateInterface $form_state): array|false {
+    [$file_id, $is_custom_field] = $this->getFileId($element, $form_state);
+
+    $upload_name = implode('_', $element['#parents']);
+    $all_files = $this->requestStack->getCurrentRequest()->files->get('files', []);
+    if (empty($all_files[$upload_name])) {
+      return FALSE;
+    }
+    $file_upload = $all_files[$upload_name];
+
+    $destination = $element['#upload_location'] ?? NULL;
+    if (isset($destination) && !$this->fileSystem->prepareDirectory($destination, FileSystemInterface::CREATE_DIRECTORY)) {
+      $this->logger->notice('The upload directory %directory for the file field %name could not be created or is not accessible. A newly uploaded file could not be saved in this directory as a consequence, and the upload was canceled.', ['%directory' => $destination, '%name' => $element['#field_name']]);
+      $form_state->setError($element, t('The file could not be uploaded.'));
+      return FALSE;
+    }
+
+    $files_uploaded = $element['#multiple'] && count(array_filter($file_upload)) > 0;
+    $files_uploaded |= !$element['#multiple'] && !empty($file_upload);
+    if (!$files_uploaded) {
+      return [];
+    }
+
+    $files = _file_save_upload_from_form($element, $form_state, NULL, $this->getFileExists($file_id, $is_custom_field));
+    if (!$files) {
+      $this->logger->notice('The file upload failed. %upload', ['%upload' => $upload_name]);
+      return [];
+    }
+
+    // Value callback expects FIDs to be keys.
+    $files = array_filter($files);
+    $fids = array_map(fn ($file) => $file->id(), $files);
+    return empty($files) ? [] : array_combine($fids, $files);
+  }
+
+  /**
+   * Works out the config identifier for a managed_file element.
+   *
+   * @return array
+   *   The file ID, and whether it is a custom (non-entity) field.
+   */
+  protected function getFileId(array $element, FormStateInterface $form_state): array {
+    $form_object = $form_state->getFormObject();
+
+    // Inline entity form: resolve the bundle of the referenced entity.
+    if ($form_state->get('inline_entity_form')
+      && (in_array('inline_entity_form', $element['#field_parents'] ?? [])
+        || in_array('inline_entity_form', $element['#array_parents']))
+    ) {
+      $field_parent = in_array('inline_entity_form', $element['#array_parents'])
+        ? $element['#array_parents'][0]
+        : $element['#field_parents'][0];
+      $ief_state = $form_state->get('inline_entity_form');
+      $ief_id = $form_state->getCompleteForm()[$field_parent]['widget']['#ief_id'] ?? NULL;
+
+      if (!$ief_id) {
+        // Use the first target bundle from the field config.
+        $field_config = $form_object->getEntity()->getFieldDefinition($field_parent);
+        $target_bundles = $field_config->getSetting('handler_settings')['target_bundles'];
+        $bundle = reset($target_bundles);
+      }
+      elseif (isset($ief_state[$ief_id]['entities'][0])) {
+        $bundle = $ief_state[$ief_id]['entities'][0]['entity']->bundle();
+      }
+      elseif (isset($ief_state[$ief_id]['form settings']['bundle'])) {
+        $bundle = $ief_state[$ief_id]['form settings']['bundle'];
+      }
+      else {
+        $field_config = reset($ief_state[$ief_id]);
+        $target_bundles = $field_config->getSetting('handler_settings')['target_bundles'];
+        $bundle = reset($target_bundles);
+      }
+      return [$element['#entity_type'] . '.' . $bundle . '.' . $element['#field_name'], FALSE];
+    }
+
+    // Entity form that actually contains the element.
+    if (method_exists($form_object, 'getEntity') && array_key_exists('#entity_type', $element)) {
+      return [$element['#entity_type'] . '.' . $form_object->getEntity()->bundle() . '.' . $element['#field_name'], FALSE];
+    }
+
+    // A custom field without an entity, or a name that doesn't match an
+    // entity field.
+    return [$element['#name'], TRUE];
+  }
+
+  /**
    * Overrides Drupal\file\Plugin\Field\FieldWidget\FileWidget::value().
    *
    * Form API callback. Retrieves the value for the file_generic field element.
@@ -170,7 +250,7 @@ class FileUploadService {
       $return = $input;
 
       // Uploads take priority over all other values.
-      if ($files = file_upload_options_file_managed_file_save_upload($element, $form_state)) {
+      if ($files = \Drupal::service('file_upload_options.file_upload_service')->saveUpload($element, $form_state)) {
         if ($element['#multiple']) {
           $fids = array_merge($fids, array_keys($files));
         }

@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Set weight to run before other modules such as filefield_paths.
+ * Set weight to run before other modules.
  */
 function file_upload_options_install() {
   module_set_weight('file_upload_options', -10);
 }
 
 /**
- * Set weight to run before other modules such as filefield_paths.
+ * Set weight to run before other modules.
  */
 function file_upload_options_update_8001() {
   module_set_weight('file_upload_options', -10);

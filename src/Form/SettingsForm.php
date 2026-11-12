@@ -3,10 +3,10 @@
 namespace Drupal\file_upload_options\Form;
 
 use Drupal\file_upload_options\Services\FileUploadService;
+use Drupal\file_upload_options\UploadOption;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
-use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -38,13 +38,6 @@ class SettingsForm extends ConfigFormBase {
   protected $entityTypeBundleInfo;
 
   /**
-   * The file system service.
-   *
-   * @var \Drupal\Core\File\FileSystemInterface
-   */
-  protected $fileSystem;
-
-  /**
    * File upload service.
    *
    * @var \Drupal\file_upload_options\Services\FileUploadService
@@ -67,16 +60,13 @@ class SettingsForm extends ConfigFormBase {
    *   The entity field manager.
    * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entityTypeBundleInfo
    *   The entity type bundle info.
-   * @param \Drupal\Core\File\FileSystemInterface $fileSystem
-   *   The file system service.
    * @param \Drupal\file_upload_options\Services\FileUploadService $fileUploadService
    *   The file upload service.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, EntityFieldManagerInterface $entityFieldManager, EntityTypeBundleInfoInterface $entityTypeBundleInfo, FileSystemInterface $fileSystem, FileUploadService $fileUploadService) {
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, EntityFieldManagerInterface $entityFieldManager, EntityTypeBundleInfoInterface $entityTypeBundleInfo, FileUploadService $fileUploadService) {
     $this->entityTypeManager = $entityTypeManager;
     $this->entityFieldManager = $entityFieldManager;
     $this->entityTypeBundleInfo = $entityTypeBundleInfo;
-    $this->fileSystem = $fileSystem;
     $this->fileUploadService = $fileUploadService;
     $this->supportedFields = $this->fileUploadService->getSupportedFields();
   }
@@ -89,7 +79,6 @@ class SettingsForm extends ConfigFormBase {
       $container->get('entity_type.manager'),
       $container->get('entity_field.manager'),
       $container->get('entity_type.bundle.info'),
-      $container->get('file_system'),
       $container->get('file_upload_options.file_upload_service')
     );
   }
@@ -126,13 +115,8 @@ class SettingsForm extends ConfigFormBase {
             '#type' => 'select',
             '#title' => $fieldInfo['bundle'] . ' - ' . $fieldInfo['field_name'],
             '#description' => $this->t('Select the method of handling where there is a file already with the same name as the file being uploaded.<br><em>Note that the Replace option will replace a file with the same name even if that file is being used/referenced by another file field. Use at your own risk.</em>'),
-            '#default_value' => $config->get('upload_option.' . $fieldId, $this->fileSystem::EXISTS_RENAME),
-            '#options' => [
-              -1 => $this->t('Current behaviour'),
-              $this->fileSystem::EXISTS_RENAME => $this->t('Rename the new file'),
-              $this->fileSystem::EXISTS_REPLACE => $this->t('Replace the existing file'),
-              $this->fileSystem::EXISTS_ERROR => $this->t('Prevent the file from being uploaded'),
-            ],
+            '#default_value' => UploadOption::fromConfig($config->get('upload_option.' . $fieldId))->value,
+            '#options' => UploadOption::options(),
           ];
         }
       }
@@ -150,12 +134,8 @@ class SettingsForm extends ConfigFormBase {
           '#type' => 'select',
           '#title' => $fieldName,
           '#description' => $this->t('Select the method of handling where there is a file already with the same name as the file being uploaded.<br><em>Note that the Replace option will replace a file with the same name even if that file is being used/referenced by another file field. Use at your own risk.</em>'),
-          '#default_value' => $uploadOption,
-          '#options' => [
-            -1 => $this->t('Current behaviour'),
-            $this->fileSystem::EXISTS_RENAME => $this->t('Rename the new file'),
-            $this->fileSystem::EXISTS_REPLACE => $this->t('Replace the existing file'),
-            $this->fileSystem::EXISTS_ERROR => $this->t('Prevent the file from being uploaded'),
+          '#default_value' => UploadOption::fromConfig($uploadOption)->value,
+          '#options' => UploadOption::options() + [
             99 => $this->t('Remove this setting'),
           ],
         ];
@@ -202,7 +182,7 @@ class SettingsForm extends ConfigFormBase {
     }
 
     if (!empty($values['add_custom_field'])) {
-      $config->set('custom_fields.' . $values['add_custom_field'], $this->fileSystem::EXISTS_RENAME);
+      $config->set('custom_fields.' . $values['add_custom_field'], UploadOption::Rename->value);
     }
 
     $config->save();
