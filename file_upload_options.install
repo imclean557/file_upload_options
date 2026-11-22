@@ -1,15 +1,30 @@
 <?php
 
 /**
+ * @file
+ * Install, update and uninstall functions for the File Upload Options module.
+ */
+
+use Drupal\Core\Extension\ModuleWeight;
+
+/**
+ * Implements hook_install().
+ *
  * Set weight to run before other modules.
  */
 function file_upload_options_install() {
-  module_set_weight('file_upload_options', -10);
+  // ModuleWeight replaces module_set_weight() from Drupal 11.5.
+  if (\Drupal::hasService(ModuleWeight::class)) {
+    \Drupal::service(ModuleWeight::class)->set('file_upload_options', -10);
+  }
+  else {
+    module_set_weight('file_upload_options', -10);
+  }
 }
 
 /**
- * Set weight to run before other modules.
+ * Implements hook_update_last_removed().
  */
-function file_upload_options_update_8001() {
-  module_set_weight('file_upload_options', -10);
+function file_upload_options_update_last_removed() {
+  return 8001;
 }

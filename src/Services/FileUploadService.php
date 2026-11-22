@@ -13,6 +13,7 @@ use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\file\Entity\File;
+use Drupal\file\Upload\ManagedFileElementHelper;
 use Drupal\file_upload_options\UploadOption;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -30,6 +31,8 @@ class FileUploadService {
     protected FileSystemInterface $fileSystem,
     protected RequestStack $requestStack,
     protected LoggerInterface $logger,
+    // Available from Drupal 11.5.
+    protected ?ManagedFileElementHelper $managedFileElementHelper = NULL,
   ) {}
 
   /**
@@ -142,7 +145,10 @@ class FileUploadService {
       return [];
     }
 
-    $files = _file_save_upload_from_form($element, $form_state, NULL, $this->getFileExists($file_id, $is_custom_field));
+    $file_exists = $this->getFileExists($file_id, $is_custom_field);
+    $files = $this->managedFileElementHelper
+      ? $this->managedFileElementHelper->saveFileUploads($element, $form_state, NULL, $file_exists)
+      : _file_save_upload_from_form($element, $form_state, NULL, $file_exists);
     if (!$files) {
       $this->logger->notice('The file upload failed. %upload', ['%upload' => $upload_name]);
       return [];
@@ -309,11 +315,11 @@ class FileUploadService {
     // default value.
     if ($input === FALSE || $force_default) {
       if ($element['#extended']) {
-        $default_fids = isset($element['#default_value']['fids']) ? $element['#default_value']['fids'] : [];
-        $return = isset($element['#default_value']) ? $element['#default_value'] : ['fids' => []];
+        $default_fids = $element['#default_value']['fids'] ?? [];
+        $return = $element['#default_value'] ?? ['fids' => []];
       }
       else {
-        $default_fids = isset($element['#default_value']) ? $element['#default_value'] : [];
+        $default_fids = $element['#default_value'] ?? [];
         $return = ['fids' => []];
       }
 
